@@ -72,10 +72,14 @@ packer rejects a backup that has any non-=0xFF= byte beyond it.
   verified. The operator saw the menu on the panel and reported that the
   badge booted through it. Stock re-enumerated on USB and answered an
   identity query.
-- Not separately observed: stock's own display after the menu's screen
-  hand-back, the demo started from the on-screen menu, and the RIGHT-held
-  fast path on this image.
-- The three-second countdown is a later revision, tested on the host only.
+- 2026-10-30, three-second countdown: the update was written and verified
+  at 08:23 UTC, then rebooted into the application. Stock re-enumerated
+  over USB. The badge owner subsequently confirmed that the three-second
+  menu works on the badge. The packed image's SHA-256 is
+  =7ef10ddcc3bf9d900be0120c7ed7c1fb32f5918ee95573cef6d5af47017b3fcf=.
+- Not separately observed on the on-screen menu images: stock's own display
+  after the menu's screen hand-back, the demo started from the on-screen
+  menu, and the RIGHT-held fast path.
 
 *Residual risk (screen hand-back):* stock must bring its panel up from the
 handed-back state: panel asleep and reset, pins on their NULL function with

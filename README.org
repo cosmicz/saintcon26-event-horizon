@@ -28,8 +28,9 @@ Wayfarer v0.1 it was developed on (SHA-256 of flash =0x0–0x177000=:
 shipped that way is unknown; a mismatch stops the build instead of producing
 an image.
 
-*At your own risk.* Earlier revisions of the dual-boot image have run on one
-badge; this revision's three-second countdown is tested on the host only
+*At your own risk.* The dual-boot image has run on one badge; the
+three-second menu update was also flashed and verified on October 30,
+and the badge owner confirmed that it works
 (details in [[file:device/dualboot/README.org][device/dualboot/README.org]]). Writing flash can brick a device,
 so keep the backup safe; restoring it is documented but has not been run on
 a badge.
