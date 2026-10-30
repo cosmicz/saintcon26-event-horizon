@@ -1,0 +1,35 @@
+; SPDX-License-Identifier: MIT
+; Derived from qspi_lcd.pio, Copyright (c) 2026 redactd (saintcon26-gif-player
+; 9726dad5); see THIRD_PARTY_NOTICES.org. Changed: 16-bit autopull so the
+; RGB565 frame buffer streams by 16-bit DMA without a big-endian copy.
+;
+; Write-only QSPI master for the ST77916. OUT pins = D0..D3 (consecutive),
+; side-set = SCLK; SPI mode 0 (data changes while SCLK is low, the panel
+; samples on the rising edge). Each 16-bit FIFO write is replicated into both
+; halves of the word; shifting left, its 16 bits leave MSB first as four
+; nibbles. Single-line phases are spread onto D0 in software.
+.program eh_lcd_qspi
+.side_set 1
+
+.wrap_target
+    out pins, 4    side 0
+    nop            side 1
+.wrap
+
+% c-sdk {
+static inline void eh_lcd_qspi_program_init(PIO pio, uint sm, uint offset, uint d0_pin, uint sclk_pin, float clkdiv) {
+    for (uint i = 0; i < 4; i++) pio_gpio_init(pio, d0_pin + i);
+    pio_gpio_init(pio, sclk_pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, d0_pin, 4, true);
+    pio_sm_set_consecutive_pindirs(pio, sm, sclk_pin, 1, true);
+
+    pio_sm_config c = eh_lcd_qspi_program_get_default_config(offset);
+    sm_config_set_out_pins(&c, d0_pin, 4);
+    sm_config_set_sideset_pins(&c, sclk_pin);
+    sm_config_set_out_shift(&c, false, true, 16);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);
+    sm_config_set_clkdiv(&c, clkdiv);
+    pio_sm_init(pio, sm, offset, &c);
+    pio_sm_set_enabled(pio, sm, true);
+}
+%}

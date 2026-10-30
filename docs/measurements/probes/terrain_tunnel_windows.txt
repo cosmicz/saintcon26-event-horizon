@@ -1,0 +1,14 @@
+terrain     0- 2000 ms mean 84.5 us
+terrain  2000- 4000 ms mean 144.3 us
+terrain  4000- 6000 ms mean 147.2 us
+terrain  6000- 8000 ms mean 146.6 us
+terrain  8000-10000 ms mean 162.5 us
+terrain 10000-12000 ms mean 157.2 us
+terrain 12000-14000 ms mean 161.7 us
+terrain 14000-16000 ms mean 158.2 us
+tunnel      0- 2000 ms mean 57.9 us
+tunnel   2000- 4000 ms mean 52.0 us
+tunnel   4000- 6000 ms mean 52.8 us
+tunnel   6000- 8000 ms mean 52.7 us
+tunnel   8000-10000 ms mean 70.2 us
+tunnel  10000-12000 ms mean 98.7 us

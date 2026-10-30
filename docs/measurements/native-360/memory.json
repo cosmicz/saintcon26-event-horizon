@@ -1,0 +1,48 @@
+{
+  "kind": "calculated = sizeof; measured = bytes of the workspace union written while each scene plays (painted high-water mark) and host peak RSS",
+  "rp2350_sram": 532480,
+  "framebuffer_360x360_rgb565": 259200,
+  "scene_workspaces_calculated": {
+    "torus-plasma": {"bytes": 127340, "blocks": [
+      {"name": "zband", "bytes": 64800, "shape": "2 x 360x45 u16", "buys": "native-res occlusion without a full-frame depth buffer (v1: 180x180)"},
+      {"name": "env", "bytes": 32768, "shape": "128x128 rgb565", "buys": "chrome environment map (v1: 64x64)"},
+      {"name": "ring", "bytes": 5888, "shape": "160 rings", "buys": "Frenet frame per ring: smooth knot silhouette (v1: 96 rings)"},
+      {"name": "pv", "bytes": 20480, "shape": "160x16 vertices", "buys": "packed projected vertices: round tube (v1: 96x8 float)"},
+      {"name": "flags", "bytes": 2560, "shape": "2560 vertices", "buys": "per-vertex near/facing bits"}
+    ]},
+    "tunnel": {"bytes": 129600, "blocks": [
+      {"name": "qang+depth", "bytes": 96800, "shape": "2 x 220x220 u8", "buys": "quadrant LUT at native res, 1024 angle steps per turn (v1: 220x220 full-plane, 256 steps)"},
+      {"name": "tex", "bytes": 32768, "shape": "128x128 rgb565", "buys": "bevelled wall texture (v1: 64x64)"}
+    ]},
+    "terrain": {"bytes": 196696, "blocks": [
+      {"name": "height", "bytes": 65536, "shape": "256x256 u8", "buys": "heightmap: finer noise octave (v1: 128x128)"},
+      {"name": "color", "bytes": 131072, "shape": "256x256 rgb565", "buys": "slope-shaded colour map (v1: 128x128)"}
+    ]},
+    "particles-logo": {"bytes": 180260, "blocks": [
+      {"name": "start", "bytes": 65536, "shape": "8192 particles", "buys": "particles seeded from the terrain frame (v1: 2048)"},
+      {"name": "targets", "bytes": 32768, "shape": "8192 max, 5384 used", "buys": "native-res logo target pixels"},
+      {"name": "seg", "bytes": 81920, "shape": "8192 segments, trails on", "buys": "per-frame segment cache for the row-banded two-core draw; tails add the motion streaks"}
+    ]}
+  },
+  "workspace_union": 196696,
+  "demo_state_total": 196772,
+  "demo_state_overhead": 76,
+  "per_scene_core_ram": {
+    "torus-plasma": {"bytes": 386616, "fraction": 0.726},
+    "tunnel": {"bytes": 388876, "fraction": 0.730},
+    "terrain": {"bytes": 455972, "fraction": 0.856},
+    "particles-logo": {"bytes": 439536, "fraction": 0.825}
+  },
+  "measured_union_high_water": {"torus-plasma": 127340, "tunnel": 129600, "terrain": 196696, "particles-logo": 196696},
+  "measured_note": "particles entry re-renders the terrain's last frame in the same union, so its high-water includes the terrain workspace",
+  "core_ram_union_peak": 455972,
+  "core_ram_fraction_of_sram": 0.8563,
+  "core_ram_measured_peak": 455972,
+  "headroom_bytes": 76508,
+  "headroom_note": "left for stack (two cores), heap, SDK BSS, USB/LED drivers and the plasma per-call arrays (1080 bytes)",
+  "v1_core_ram": 205188,
+  "v1_fraction_of_sram": 0.3853,
+  "const_tables_flash": {"sin8": 256, "circle_spans": 1440, "palettes": 2048, "led_samples": 324},
+  "host_peak_rss_bytes": {"before_touching_core": 1212416, "after_all_scenes": 1703936},
+  "host_present_canvas_not_on_device": 580800
+}

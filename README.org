@@ -1,0 +1,134 @@
+#+title: EVENT HORIZON — a SAINTCON 2026 badge demo
+#+startup: overview
+
+A 54-second demoscene production for the SAINTCON 2026 badge's 360×360 round
+panel (RP2350): a chrome torus knot over plasma, a twisting tunnel, a terrain
+flythrough and a particle rebuild into an end title, rendered natively on
+both Cortex-M33 cores. It installs beside the badge's stock Wayfarer firmware
+behind a boot menu, so the badge keeps working as a badge.
+
+Write-up with footage: [[https://craftedkin.net/saintcon26-event-horizon/][craftedkin.net/saintcon26-event-horizon]].
+
+* Before you build for a badge
+
+*You need your own stock backup.* This repository contains no firmware
+image and none of the panel's register values. Those values belong to the
+badge's stock firmware, so the build extracts them from a full flash backup
+of your own badge (=device/tools/extract_panel_init.py=, static analysis
+only; nothing is executed). Without the backup, the device images are not
+built.
+
+#+begin_src sh
+picotool save -a -v -f STOCK_DUMP.bin   # whole 16 MiB flash; keep it private
+#+end_src
+
+The build accepts only a backup whose firmware is byte-identical to the
+Wayfarer v0.1 it was developed on (SHA-256 of flash =0x0–0x177000=:
+=504a1d8f…35ad=) and whose remaining flash is erased. Whether every badge
+shipped that way is unknown; a mismatch stops the build instead of producing
+an image.
+
+*At your own risk.* The dual-boot image has run on one badge. Writing flash
+can brick a device, so keep the backup safe; restoring it is documented but
+has not been run on a badge.
+
+*The EEPROM.* The badge keeps its saved state in an I2C EEPROM, which a
+flash backup does not include: if it is lost, the backup will not bring it
+back. The menu and demo never touch it, and the build audits both images
+for I2C and EEPROM access (=device/dualboot/check.sh=). Stock, however,
+reads buttons held during its start-up, and one combination resets that
+saved state, so the boot menu never hands over to stock while a key is down.
+
+Build, layout, safety argument and flashing:
+[[file:device/dualboot/README.org][device/dualboot/README.org]]. Toolchain: [[file:device/README.org][device/README.org]].
+
+* On the badge
+
+| At power-on | Result |
+|-------------+--------|
+| Hold RIGHT | The demo starts at once |
+| Nothing held | A menu shows Wayfarer (left) and the demo (right) for 3 s, then boots the highlighted one (Wayfarer by default) |
+
+In the menu, LEFT and RIGHT choose and restart the countdown; pressing the
+stick confirms. In the demo, the D-pad steers the camera, centre resets it,
+A cycles the palette and B toggles a wireframe torus.
+
+* The renderer
+
+| Scene | Time | Technique |
+|-------+------+-----------|
+| Chrome torus knot over plasma | 0–14 s | Fixed-point plasma; (2,3) knot tube 160×16, banded z-buffer, 128² sphere env map; dive and white-out exit |
+| Twisting textured tunnel | 14–26 s | Mirrored quadrant angle/depth LUT (1024 steps) with camera offset; 128² bevelled texture; depth shade |
+| Terrain flythrough | 26–42 s | 256² height/colour maps, front-to-back column march, terrain-following camera, fog, rising sun |
+| Particle rebuild | 42–54 s | 8,192 particles seeded from the last terrain frame stream back, with trails, into the end title |
+
+The portable core (=src/core=) renders RGB565 at the panel's native
+resolution with a two-core frame plan (8 parts, 1–2 passes). Its RAM peak is
+85.6% of the RP2350's SRAM; every block has a before/after sheet in
+[[file:docs/measurements/native-360/README.org][docs/measurements/native-360]]. The same core drives a desktop preview and
+the device build.
+
+* Desktop preview and tests
+
+Requirements: CMake ≥ 3.20, a C11 compiler, Python 3. SDL2 is optional and
+only needed for the interactive window. Developed on macOS 15 (Apple M2 Max,
+AppleClang 17); the device toolchain is described in [[file:device/README.org][device/README.org]].
+
+#+begin_src sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+(cd build && ctest --output-on-failure)
+python3 tools/mutation_check.py           # every targeted mutant must fail a test
+
+# ASan + UBSan
+cmake -S . -B build-asan -DCMAKE_BUILD_TYPE=RelWithDebInfo -DEH_SANITIZE=ON
+cmake --build build-asan -j && ctest --test-dir build-asan --output-on-failure
+
+# ThreadSanitizer over the two-thread pool
+cmake -S . -B build-tsan -DCMAKE_BUILD_TYPE=Debug -DEH_TSAN=ON -DEH_PREVIEW=OFF
+cmake --build build-tsan -j && ctest --test-dir build-tsan --output-on-failure
+
+# Lower a quality knob (see include/eh/eh_config.h), e.g. trails off
+cmake -S . -B build-knob -DCMAKE_BUILD_TYPE=Release -DEH_DEFINES="EH_PARTICLE_TRAILS=0"
+#+end_src
+
+Interactive window: =./build/eh_preview [--scale N] [--start MS] [--threads 1|2]=
+
+| Key | Badge control |
+|-----+---------------|
+| Arrows | D-pad (camera yaw/pitch) |
+| Enter / Space | D-pad centre (reset camera) |
+| Z | A — next palette |
+| X | B — wireframe torus |
+| P / R / [ ] / 1–4 | pause / restart / seek ∓5 s / jump to scene |
+
+Headless:
+
+#+begin_src sh
+./build/eh_cli frames --out out/frames                 # PPM per scene midpoint, JSON line per frame
+./build/eh_cli frames --out out/f --at 5000,9000 --hold RIGHT:3000-5000
+./build/eh_cli bench demo [--threads 1|2]
+./build/eh_cli memory                                  # calculated + painted high-water
+#+end_src
+
+=frames= plays from t = 0 in 30 fps steps, so =--hold BTN:FROM-TO= acts like
+a held button (=UP DOWN LEFT RIGHT CENTER A B=). Each PPM is the full 440×440
+presentation: panel plus LED ring.
+
+* Credits
+
+- *Professor Plum* made the SAINTCON 2026 badge.
+- *redactd*'s [[https://github.com/im-redactd/saintcon26-gif-player][saintcon26-gif-player]] (MIT) documented the hardware; the LCD
+  driver and QSPI PIO program derive from it.
+- The WS2812 PIO program derives from Raspberry Pi's [[https://github.com/raspberrypi/pico-examples][pico-examples]]
+  (BSD-3-Clause); the device build uses the [[https://github.com/raspberrypi/pico-sdk][Pico SDK]].
+- *bashNinja*'s web flasher with NES and Game Boy emulators was the
+  inspiration.
+
+Third-party notices: [[file:device/demo/THIRD_PARTY_NOTICES.org][device/demo/THIRD_PARTY_NOTICES.org]]. The end title is
+drawn in a built-in block font, not the official SAINTCON artwork.
+
+* License
+
+MIT; see [[file:LICENSE][LICENSE]]. Third-party files keep their own licences, listed in
+the notices above.

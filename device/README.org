@@ -1,0 +1,54 @@
+#+title: RP2350 device build (host side)
+#+date: [2026-10-29 Thu]
+
+Host toolchain for building RP2350 images of EVENT HORIZON.
+Everything here runs on the host. Nothing in this directory talks to a badge.
+Flashing is a separate step (see [[file:dualboot/README.org][dualboot/README.org]]).
+
+* Toolchain
+
+| Component | Version | Location | Provenance / licence |
+|-----------+---------+----------+----------------------|
+| Arm GNU Toolchain (arm-none-eabi, newlib) | 15.3.Rel2, GCC 15.3.1 20260627 | =~/.local/share/rp2350/arm-gnu-toolchain-15.3.rel2-darwin-arm64-arm-none-eabi= | Official Arm darwin-arm64 tarball from gitlab.arm.com's package registry. The tarball's SHA-256 (=f011e483…6c60=) matches Arm's =.sha256asc=. Arm's =.pkg= checksum matches the Homebrew =gcc-arm-embedded= cask (=779972fa…12f3=), which independently confirms the release channel. GCC, binutils and newlib come under their upstream licences. The tarball root has no licence file. It is a build tool only; none of it is copied into this repository. |
+| Pico SDK | 2.3.1 (=079c6f39023649b154152db30f1d781e884879bc=) | =~/.local/share/rp2350/pico-sdk-2.3.1= | =git clone --depth 1 --branch 2.3.1= of raspberrypi/pico-sdk. BSD-3-Clause (=LICENSE.TXT=, read). Submodules are not initialised (no TinyUSB, BTstack, CYW43, lwIP, mbedTLS). |
+| picotool | 2.3.1 | Homebrew | Used here only for ELF→UF2 conversion and file-only =info=. |
+| CMake / Ninja | 4.0.1 / 1.12.1 | Homebrew / =/usr/local= | — |
+
+Homebrew-core =arm-none-eabi-gcc= is deliberately not used: it ships without
+newlib, which the Pico SDK links against. =probe-rs= and =openocd= are not
+installed, since no SWD debug probe is in scope.
+
+=elf2uf2=: since SDK 2.x, picotool replaces it (=pico_add_extra_outputs= calls
+=picotool uf2 convert=).
+
+* Build
+
+#+begin_src sh
+. device/env.sh                       # PICO_SDK_PATH, PICO_TOOLCHAIN_PATH, picotool_DIR
+sh device/smoke/check.sh              # builds device/smoke, prints file-only evidence
+#+end_src
+
+Recorded output, highlights:
+
+- ELF: Armv8-M Mainline, FPv5-D16 (Cortex-M33 hard float); 9,788 B text,
+  784 B bss.
+- =picotool info= on the file reports: RP2350, ARM Secure image,
+  =IMAGE_DEF= block, extra security not enabled, SDK 2.3.1, board =pico2=.
+- Zero I2C symbols in the smoke ELF.
+- Image hashes change between days, because the SDK embeds the build date.
+
+* Findings that matter for the dual-boot image
+
+1. *UF2 writes the last flash page.* picotool's UF2 output adds one block in
+   the ABSOLUTE family (=0xe48bff57=) at =0x10ffff00–0x11000000=, alongside
+   the 23 =rp2350-arm-s= blocks. On the badge's 16 MiB flash, that address is
+   the last 256-byte page. Whether the bootrom writes or ignores that block
+   during a drag-and-drop copy is not verified here. If stock keeps data near
+   the end of flash, do not install by UF2 drag-and-drop without resolving
+   this. Prefer an explicit-offset write of a =.bin= (see
+   [[file:dualboot/README.org][dualboot/README.org]]).
+2. *Board config.* =pico2.h= selects the W25Q080 boot stage and sets
+   =PICO_FLASH_SIZE_BYTES= to 4 MiB. The badge's own header, with 16 MiB flash and
+   no default I2C pins, is now =device/board/saintcon26_badge.h=.
+3. *Dual-boot build.* The layout, menu, packer and EEPROM/flash-safety audit
+   are in [[file:dualboot/README.org][dualboot/README.org]].

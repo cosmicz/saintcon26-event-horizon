@@ -1,0 +1,55 @@
+eh_camera.s      eh_camera_update             BB1_6    blocks=1 instrs=16 strh=0
+eh_camera.s      eh_camera_update             BB1_13   blocks=1 instrs=16 strh=0
+eh_demo.s        eh_timeline_at               BB0_3    blocks=1 instrs=23 strh=0
+eh_demo.s        eh_demo_prepare              BB3_6    blocks=1 instrs=23 strh=0
+eh_demo.s        eh_demo_frame                BB7_2    blocks=6 instrs=31 strh=0
+eh_demo.s        eh_demo_frame                BB7_13   blocks=6 instrs=31 strh=1
+eh_fade.s        eh_fade_rect                 BB0_5    blocks=1 instrs=16 strh=1
+eh_fade.s        eh_fade_rect                 BB0_9    blocks=1 instrs=15 strh=1
+eh_fade.s        eh_fade_rect                 BB0_13   blocks=1 instrs=15 strh=1
+eh_fade.s        eh_fade_rect                 BB0_21   blocks=1 instrs=15 strh=1
+eh_fade.s        eh_fade_rect                 BB0_24   blocks=1 instrs=15 strh=1
+eh_fade.s        eh_fade_rect                 BB0_27   blocks=1 instrs=15 strh=1
+eh_fade.s        eh_fade_rect                 BB0_30   blocks=1 instrs=16 strh=1
+eh_leds.s        eh_leds_from_frame           BB0_1    blocks=1 instrs=182 strh=0
+eh_particles.s   emit_text                    BB1_1    blocks=1 instrs=14 strh=0
+eh_particles.s   emit_text                    BB1_32   blocks=9 instrs=59 strh=8
+eh_particles.s   eh_particles_init            BB2_1    blocks=1 instrs=45 strh=4
+eh_particles.s   eh_particles_render_part     BB4_21   blocks=1 instrs=34 strh=4
+eh_particles.s   eh_particles_render_part     BB4_27   blocks=3 instrs=129 strh=2
+eh_particles.s   eh_particles_render_part     BB4_38   blocks=1 instrs=121 strh=72
+eh_particles.s   eh_particles_render_part     BB4_44   blocks=5 instrs=142 strh=6
+eh_plasma.s      eh_plasma_render             BB0_1    blocks=1 instrs=109 strh=0
+eh_plasma.s      eh_plasma_render             BB0_3    blocks=1 instrs=125 strh=1
+eh_plasma.s      eh_plasma_render             BB0_19   blocks=1 instrs=75 strh=4
+eh_raster.s      eh_raster_tri                BB1_42   blocks=5 instrs=94 strh=4
+eh_raster.s      eh_raster_line               BB2_1    blocks=2 instrs=27 strh=1
+eh_terrain.s     eh_terrain_init              BB0_6    blocks=1 instrs=148 strh=1
+eh_terrain.s     eh_terrain_init              BB0_10   blocks=1 instrs=198 strh=0
+eh_terrain.s     eh_terrain_init              BB0_17   blocks=7 instrs=154 strh=1
+eh_terrain.s     eh_terrain_altitude          BB2_8    blocks=4 instrs=136 strh=0
+eh_terrain.s     eh_terrain_render_part       BB4_1    blocks=1 instrs=115 strh=9
+eh_terrain.s     eh_terrain_render_part       BB4_23   blocks=1 instrs=9 strh=4
+eh_terrain.s     eh_terrain_render_part       BB4_25   blocks=1 instrs=194 strh=0
+eh_terrain.s     eh_terrain_render_part       BB4_38   blocks=3 instrs=109 strh=2
+eh_torus.s       eh_torus_init                BB0_1    blocks=1 instrs=126 strh=0
+eh_torus.s       eh_torus_init                BB0_3    blocks=1 instrs=19 strh=0
+eh_torus.s       build_env                    BB1_5    blocks=3 instrs=118 strh=1
+eh_torus.s       eh_torus_render_part         BB3_6    blocks=1 instrs=30 strh=0
+eh_torus.s       eh_torus_render_part         BB3_13   blocks=2 instrs=127 strh=3
+eh_tunnel.s      eh_tunnel_init               BB0_2    blocks=1 instrs=34 strh=0
+eh_tunnel.s      eh_tunnel_init               BB0_9    blocks=10 instrs=51 strh=4
+eh_tunnel.s      eh_tunnel_prepare            BB1_6    blocks=10 instrs=51 strh=4
+eh_tunnel.s      eh_tunnel_render_part        BB3_14   blocks=7 instrs=127 strh=2
+   text	   data	    bss	    dec	    hex	filename
+    380	      0	      0	    380	    17c	eh_camera.o
+   1131	      0	      0	   1131	    46b	eh_demo.o
+    946	      0	      0	    946	    3b2	eh_fade.o
+    616	      0	      0	    616	    268	eh_leds.o
+   4370	      0	      0	   4370	   1112	eh_particles.o
+   1432	      0	      0	   1432	    598	eh_plasma.o
+   1968	      0	      0	   1968	    7b0	eh_raster.o
+   4068	      0	      0	   4068	    fe4	eh_tables.o
+   6464	      0	      0	   6464	   1940	eh_terrain.o
+   4344	      0	      0	   4344	   10f8	eh_torus.o
+   2088	      0	      0	   2088	    828	eh_tunnel.o

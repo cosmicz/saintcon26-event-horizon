@@ -1,0 +1,7 @@
+torus     0- 2000 ms mean 361.2 max 471.5 us
+torus  2000- 4000 ms mean 334.9 max 513.8 us
+torus  4000- 6000 ms mean 340.8 max 445.3 us
+torus  6000- 8000 ms mean 328.2 max 387.3 us
+torus  8000-10000 ms mean 346.6 max 447.2 us
+torus 10000-12000 ms mean 345.2 max 432.8 us
+torus 12000-14000 ms mean 586.3 max 802.2 us

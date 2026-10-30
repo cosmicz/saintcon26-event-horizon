@@ -1,0 +1,155 @@
+#+title: Dual-boot layout: menu, relocated stock, EVENT HORIZON
+#+date: [2026-10-29 Thu]
+
+Design and build of the dual-boot image. Everything here produces files on
+the host; flashing is a separate step you run yourself (see Flashing).
+
+* Layout (16 MiB flash; offsets from the flash base)
+
+| Offset | End | Content | Source |
+|--------+-----+---------+--------|
+| =0x000000= | < =0x010000= | Menu image; its block loop holds an =IMAGE_DEF= and the partition table | =device/menu/= |
+| =0x010000= | =0x187000= | Partition 0: stock Wayfarer v0.1, byte-identical copy of the backup's =0x000000–0x177000= | private backup |
+| =0x200000= | =0x400000= | Partition 1: EVENT HORIZON | =device/demo/= |
+| =0x400000= | =0x1000000= | Unpartitioned, left as is; nothing is written in the last 256 B page | — |
+
+Stock's used extent is =0x000000–0x176b00= (program to =0x176ab4=, then page
+padding). Its partition is that extent rounded up to 4 KiB, =0x177000=. The
+packer rejects a backup that has any non-=0xFF= byte beyond it.
+
+* Boot mechanism (RP2350 datasheet, build 80d627281ed5)
+
+1. *Partition-table-in-image boot* (§5.1.14). When a block loop in the first
+   4 KiB holds both an =IMAGE_DEF= and a =PARTITION_TABLE=, the bootrom loads
+   that table and enters the image directly, without searching the
+   partitions. The table is =singleton=, so flash slot 1 is not scanned
+   (§5.1.15).
+2. The menu enables pull-ups on the seven buttons and takes 16 D-pad samples
+   2 ms apart. If RIGHT reads pressed in every sample, it starts the demo at
+   once: no screen and no release wait. The demo's key handling (A/B
+   included) cannot reach the EEPROM: no I2C, no GPIO4/5, no flash writes.
+3. Otherwise it brings up the panel (=device/menu/eh_menu_draw.h=) and shows
+   Wayfarer on the left and the torus on the right:
+   - the chosen tile is lit and ringed, and its name is shown above;
+   - an arc around the rim counts down three seconds;
+   - the LEDs take the chosen side's colour (gold or orange).
+
+   Controls:
+   - LEFT picks Wayfarer and RIGHT picks the demo; each press restarts the
+     countdown;
+   - CENTRE (the stick press) confirms at once;
+   - A, B, UP and DOWN do nothing, and keys already down when the screen
+     appears do not count as presses;
+   - when the countdown runs out, the badge boots the chosen image. The default
+     is Wayfarer.
+
+   Before chaining either image, the menu undoes its screen set-up: LEDs
+   blanked (WS2812s otherwise keep their colour); panel display off, asleep
+   and hardware-reset; its pins disconnected (function NULL) with pull-downs
+   and default slew; PIO, DMA and PWM held in reset. This is not a full pad
+   reset: pad isolation stays cleared. The next SDK image's =runtime_init=
+   resets the IO and pad banks itself.
+4. Before stock only, it waits until all seven buttons (GPIO16, 17, 19–23)
+   have read released for 100 ms without a break, showing RELEASE while a
+   key is down. Stock reads buttons held during its start-up, and one such
+   combination resets the badge's saved state in its EEPROM, so the menu
+   never hands over with a key down. A stuck key keeps the badge in the
+   menu, which is the safe failure.
+5. It reads the chosen partition's location with =get_partition_table_info=
+   and calls =chain_image(workarea, 4 KiB, XIP_BASE + start, size)=
+   (§5.4.8.2). This is the custom-bootloader pattern of §5.10.6. When an
+   image is launched from a partition, the bootrom maps the partition to
+   =0x10000000= with QMI ATRANS (§5.1.19), so stock, linked at =0x10000000=,
+   runs unmodified. If the demo partition holds no bootable image,
+   =chain_image= returns and the menu chains stock instead.
+
+*Residual risk (on-screen menu, not on hardware yet):* stock must bring its
+panel up from the handed-back state: panel asleep and reset, pins on their
+NULL function with pull-downs, PIO/DMA/PWM held in reset. The basis is
+static: an SDK image's =runtime_init= resets the IO and pad banks and those
+blocks itself, and the panel has had a hardware reset. Failure would show as a dark or corrupt display in
+stock, not an EEPROM write. Checking it needs another flash.
+
+*Verified on hardware 2026-10-29/30* on one badge: stock and the demo both
+boot through =chain_image=, with both the earlier headless menu and the
+on-screen menu. Background: whether =chain_image= on a
+partition region sets up ATRANS exactly as a partition boot does. The datasheet documents this
+pattern for custom bootloaders but does not spell out the ATRANS step for
+=chain_image=. A review (2026-10-29) traced Raspberry Pi's
+official A4 bootrom source at =c6cdb171=: =chain_image= → checked flash
+window → flash launch, which sets ATRANS. That is static support from
+source, not a hardware test. Stock's own runtime start-up resets the peripherals the menu
+touched (SDK =runtime_init_early_resets=: everything except QSPI, PLLs, USB
+and syscfg).
+
+* Safety invariants and how they are checked
+
+| Invariant | Check |
+|-----------+-------|
+| Menu and demo never touch I2C or the EEPROM | =device/tools/image_audit.py= on the built images: no =i2c= symbols, no I2C0/I2C1 register literals (all atomic aliases), no GPIO4/5 IO or pad register literals (all aliases). It fails closed when the constants header lacks the ROM codes. |
+| ... including through the SDK's computed GPIO addresses, which leave no literal | =device/tools/pin_audit.py= on the sources, including the C-SDK sections of the =.pio= files. No =i2c=, EEPROM pin names, raw GPIO bank handles or bases, or GPIO mask writes. Every pin argument must evaluate, within a fixed grammar, to pins other than GPIO4/5; anything outside the grammar fails. The grammar is: badge pin names; =static const= tables whose entries are all badge pin names; =+ i= inside a loop with a literal bound that never writes =i=; and PIO helper parameters bound to their callers' arguments. Pin counts widen ranges. |
+| Menu and demo never erase or program flash | Same image audit: no ROM lookups of =FLASH_RANGE_ERASE=, =FLASH_RANGE_PROGRAM= or =FLASH_OP= |
+| The audit is not vacuous | Three negative witnesses (=device/tools/witnesses=, never flashed), one per pattern. =check.sh= requires each to fail on exactly its own check (=flash-rom=; =i2c-literal,i2c-symbols=; =gpio45=), and requires an empty constants header to be refused (exit 2). Unit tests and mutants cover each check. |
+| D-pad-only selection; release wait covers all seven buttons | =test_boot_choose_dpad_only=, =test_release_wait_all_buttons=, =test_menu_select_*= (A/B/UP/DOWN inert, held keys are not presses, default Wayfarer), plus mutants in =tools/mutation_check.py= |
+| The demo build is unchanged by the menu's panel code | =eh_lcd_release= is compiled only with =EH_LCD_RELEASE= (the menu); the demo image stays byte-identical (=5340744a…=) |
+| Stock relocation is pure | =dualboot_pack.py= copies =dump[0:extent]=, reads back both the slot file and the stock range of =dualboot.bin=, and compares them with the dump. Its tests include a before ≠ after relocation check. |
+| No partition in the last flash sector, no overlap, menu below partition space | =dualboot_pack.py= rejects these; covered by tests and mutants |
+| The board header omits the SDK's default I2C pins (GPIO4/5) | =device/board/saintcon26_badge.h= |
+
+* Demo slot (=device/demo/=)
+
+The portable core runs on both M33 cores. Core 0 prepares, renders the even
+parts and finishes. Core 1 renders the odd parts. The SIO FIFO is the
+barrier between passes. The frame buffer streams to the ST77916 by 16-bit DMA
+into a PIO QSPI program at 75 MHz SCLK. A 16-bit FIFO write shifts out MSB
+first, so the renderer's native RGB565 goes on the wire high byte first, with
+no second buffer. The nine WS2812 LEDs on GPIO24 run from a second PIO
+program. Buttons are read directly. Each core's stack is a full 4 KiB
+scratch bank; the deepest frame (terrain part) is 1,624 B. Static RAM is
+459 KB of the 512 KB main SRAM, plus a 2 KiB heap.
+
+*Panel init.* The ST77916 register values come from your own stock backup;
+this repository does not contain them. =device/tools/extract_panel_init.py=
+statically evaluates stock's init-table builder; no firmware code is
+executed. It writes the header into the ignored =build/generated-private/=
+only. The demo target is built only when =-DEH_STOCK_DUMP== is given. Its
+194 commands equal, in order, the first 194 of the community gif-player's
+table (which that table's author also read back from stock). That table adds
+a =MADCTL= of its own. Third-party code is listed in
+[[file:../demo/THIRD_PARTY_NOTICES.org][device/demo/THIRD_PARTY_NOTICES.org]].
+
+*Not verified on hardware:* LED colour order (GRB assumed) and frame rate.
+Panel output over the QSPI bus works on the badge. The host tests cover the
+QSPI single-line packing (=test_qspi_single_line_pack=), not the bus itself.
+
+* Build
+
+#+begin_src sh
+sh device/dualboot/check.sh STOCK_DUMP.bin OUT_DIR           # build + audit + pack
+# The demo needs the dump at configure time:
+#   cmake -S device/dualboot -B device/dualboot/build -DEH_STOCK_DUMP=STOCK_DUMP.bin
+#+end_src
+
+The packer writes =slot0-menu.bin=, =slot1-stock.bin=, =slot2-demo.bin=,
+=dualboot.bin= and =manifest.json=. Slot 1 is stock firmware and the panel
+table comes from it, so keep =OUT_DIR= private and outside Git.
+
+* Flashing
+
+With the badge on USB (=-f= reboots it into BOOTSEL), write the whole packed
+image from offset 0. This is the command that installed the image verified
+on hardware:
+
+#+begin_src sh
+picotool load -v -x dualboot.bin -t bin -o 0x10000000 -f
+#+end_src
+
+Writing slots one at a time also works in principle (menu at =0x10000000=,
+stock at =0x10010000=, demo at =0x10200000=), but has not been tried, nor has
+whether picotool then needs =--ignore-partitions=. Don't drag and drop a
+UF2: once this layout is installed, UF2 targeting goes by partition family.
+
+Rolling back means writing your full 16 MiB backup at offset 0, which also
+removes the partition table:
+=picotool load -v -x STOCK_DUMP.bin -t bin -o 0x10000000 -f=. That restore
+has not been run on a badge.

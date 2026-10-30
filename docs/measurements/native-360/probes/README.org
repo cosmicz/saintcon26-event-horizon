@@ -1,0 +1,72 @@
+#+title: Native-360 probes: RP2350 frame-time estimate
+#+date: [2026-10-29 Thu]
+
+* What this is
+
+An *estimate*, not a device measurement. No badge, USB, flash or vendor
+binary was touched. It answers one question with stated error bars: does
+each scene plausibly fit the 30 fps budget on two Cortex-M33 cores at
+150 MHz, given the dual-core part plan?
+
+  estimated cycles(frame, core) = Σ_unit  host work count(unit, core) × M33 cycles per unit
+
+- *Work counts* are exact. =device_estimate.c= links the real core, plays
+  the full 54 s loop at 30 fps steps, and after each frame reads what the
+  scene actually did: knot pixels written, rasteriser rows, tested and
+  depth-failed pixels (=eh_raster_stats=), terrain sky pixels, circle spans
+  per part, particle segment extents and so on. Work is attributed to the
+  worker that runs each part (parts =w, w+2, …= on worker =w=, as in
+  =eh_pool=), and a frame's cost is the slower worker (the critical path).
+- *Cycles per unit* are a low/high range per unit, from Clang's Cortex-M33
+  Thumb-2 output of the same sources (=m33.sh=, compile only). The enum
+  comments in =device_estimate.c= give each unit's instruction count. Low
+  ≈ 1.1–1.2 cycles per instruction with single-cycle SRAM; high allows
+  ~1.5–1.7 for taken branches, VDIV/VSQRT (14 cycles), loads and SRAM bank
+  contention between the cores.
+
+* Assumptions (any of these can move the result)
+
+- 150 MHz system clock (RP2350 datasheet nominal), both cores rendering,
+  5.0 M cycles per core per 30 fps frame.
+- All workspaces and the framebuffer in SRAM; hot constant tables copied
+  from XIP flash to SRAM. XIP cache misses are not modelled.
+- Display transfer by DMA overlaps rendering and costs no CPU. The panel is
+  reported (community notes) to be an ST77916 on 4-bit QSPI: 259,200 B per
+  frame is ~518 k bus clocks, ~10 ms at 50 MHz. That bus speed is unverified.
+  There is no second framebuffer (it would not fit), so the device plan is
+  band streaming: DMA sends finished row bands while later bands render;
+  scenes whose last pass is row-banded (torus, tunnel, particles) suit this;
+  terrain is column-partitioned and would stream after its pass. Tearing
+  behaviour is unverified.
+- Prepare/finish (serial, per frame) and scene-entry table builds are not in
+  the per-frame estimate; entry frames are one-off stalls.
+
+* Reproduce
+
+From the repository root, after the normal Release build:
+
+#+begin_src sh
+cc -O2 -std=c11 -Iinclude docs/measurements/native-360/probes/device_estimate.c \
+   build/libeh_core.a -lm -o build/device_estimate
+./build/device_estimate > docs/measurements/native-360/device-estimate.json
+sh docs/measurements/native-360/probes/m33.sh build/m33 \
+   > docs/measurements/native-360/m33-loops-and-size.txt
+#+end_src
+
+For a knob variant, build the core with the same =-DEH_DEFINES= and pass the
+same =-D= flags to the probe compile (the probe must see the same
+=eh_config.h= values as the library).
+
+=m33_shim/math.h= only declares the libm functions, so the core compiles
+without a target libc; =-nostdlibinc= keeps Clang's float builtins (=floorf=
+→ =vrintm=) that =-ffreestanding= would disable.
+
+* Limitations
+
+- Static instruction counts × assumed CPI. Real cycles depend on pipeline
+  stalls, SRAM bank conflicts, interrupt load and the LCD/DMA traffic.
+- Back-facing-by-area triangles are counted as full setups (an upper bound).
+- One clock assumption. Overclocking is a separate, unsupported option and
+  is not assumed.
+- Must be replaced by on-device cycle counts (DWT CYCCNT) in a separately
+  authorised device task.

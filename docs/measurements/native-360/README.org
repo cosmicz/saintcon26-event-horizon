@@ -1,0 +1,158 @@
+#+title: Native 360×360 build: memory, visible gains, frame time
+#+date: [2026-10-29 Thu]
+
+Evidence for the native-resolution build: raise the core working set from v1's
+38.5% to 80–90% of RP2350 SRAM and spend every added block on something a
+reviewer can see. Everything here was produced on the host. No badge, USB,
+flash or vendor binary was used. Host timings are not RP2350 timings; the
+device frame rate is an *estimate* (see [[file:probes/README.org][probes/README.org]]).
+
+* Files
+
+| File | Produced by |
+|------+-------------|
+| =memory.json= | =./build/eh_cli memory= |
+| =bench-demo-t1-run{1,2}.json=, =bench-demo-t2-run{1,2}.json= | =./build/eh_cli bench demo --threads 1= / =2= |
+| =bench-demo-v1-5889e0d.json= | v1 =eh_cli bench demo= built from =git archive 5889e0d= |
+| =bench-plasma.json=, =bench-plasma-bands2.json= | =./build/eh_cli bench plasma [--bands 2]= |
+| =device-estimate.json= | =probes/device_estimate.c= (estimate, not a measurement) |
+| =m33-loops-and-size.txt= | =probes/m33.sh= (Cortex-M33 compile only) |
+| =ablation/= (PNG sheets + =manifest.json=) | =python3 tools/ablate.py --out docs/measurements/native-360/ablation= |
+| =environment.txt= | host, load, base commit, timestamps |
+
+Build for every file: =cmake -S . -B build -DCMAKE_BUILD_TYPE=Release=
+(AppleClang 17.0.0, =-O3=, arm64) on an Apple M2 Max, macOS 15.8.1. The
+measurements were taken from the working tree on =feature/native-360= just
+before the commit that adds this file; that commit contains the measured
+sources. Load averages were 7.5–8.9 (other agent sessions running), so the
+tails (p95/max) are noisy; medians repeated within a few percent, except
+for two-thread torus/tunnel, where run 2 was ~20–30% slower.
+
+* Memory (calculated = =sizeof=; measured = painted high-water)
+
+=eh_cli memory= fills the workspace union with a pattern, plays each scene,
+and counts the bytes changed. The frame buffer is 259,200 B; the
+=eh_demo= header outside the union is 76 B.
+
+| Scene | Workspace calc. | Union high-water measured | Core RAM (fb + demo) | % of 532,480 |
+|-------+-----------------+---------------------------+----------------------+--------------|
+| torus + plasma | 127,340 | 127,340 | 386,616 | 72.6 |
+| tunnel | 129,600 | 129,600 | 388,876 | 73.0 |
+| terrain | 196,696 | 196,696 | *455,972* | *85.6* |
+| particles | 180,260 | 196,696 (note) | 439,536 | 82.5 |
+| *Union peak* | 196,696 | 196,696 | *455,972* | *85.6* |
+| v1 (180×180), for reference | | | 205,188 | 38.5 |
+
+Note: the particle scene's entry re-renders the terrain's final frame in the
+same union to seed from it, so its high-water includes the terrain
+workspace. Peak calculated = peak measured = 455,972 B.
+
+The device allocates the union once, so the union peak is the number that
+matters: 85.6%, inside the 80–90% band. Headroom is 76,508 B (14.4%) for
+two core stacks, heap, SDK BSS, LCD/LED drivers and the plasma's 1,080 B of
+per-call arrays. Torus and tunnel could each grow by ~67–69 KB without
+raising the peak. The one candidate measured, a 320-ring mesh, showed no
+visible gain, so that space stays free; nothing was padded to fill it.
+
+Code is not in that figure. Clang Cortex-M33 =-O2= =.text= for the whole core
+is 27,807 B (=m33-loops-and-size.txt=), of which 4,068 B is const tables
+(flash). That matters for one device option. A RAM-only (=no_flash=) first
+run also needs code, libm, the SDK runtime, drivers
+and stacks in SRAM. After the core's 27.8 KB of code, ~49 KB of headroom
+remains for the rest. Whether that fits is unmeasured. =EH_TERRAIN_SHIFT=7= (core 308,516 B,
+57.9%) is the documented fallback build for that case.
+
+* Every block, and what it buys
+
+Each row is a knob in =include/eh/eh_config.h=. =tools/ablate.py= builds the
+knob lowered (v1 value where one existed), renders the same frame in both
+builds, and writes =[default | ablated]= over =[4× crop | 4× crop]=. Frames
+are deterministic; =manifest.json= records every framebuffer hash.
+
+| Block | Bytes | Ablated to | Frame | Visible difference | Sheet |
+|-------+-------+------------+-------+--------------------+-------|
+| Native frame buffer | +194,400 vs v1 | v1 180×180 ×2 | all | Every edge at panel resolution instead of 2×2 blocks | =v1-vs-native-*.png= |
+| Torus env map 128² | 24,576 | 64² | 6000 | Blurrier, blockier chrome reflections | =ablate-torus-env.png= |
+| Torus mesh 160×16 | 18,752 | v1 96×8 | 6000 | Faceted tube outline, polygonal bends | =ablate-torus-mesh.png= |
+| Torus depth bands (2 × 360×45) | 64,800 | none (replaces v1's 180² z-buffer) | — | Native-resolution occlusion | v1 sheet |
+| Tunnel texture 128² | 24,576 | 64² | 20000 | Coarser panels, stair-stepped seams | =ablate-tunnel-tex.png= |
+| Tunnel quadrant LUT 2 × 220² | 96,800 | v1: same bytes, full plane, 256 angle steps | 20000 | Native-res angle/depth, 1024 angle steps | v1 sheet |
+| Terrain maps 256² | 147,456 | 128² | 30500 | Near slopes break into blocks twice as large | =ablate-terrain-map.png= |
+| Particles 8,192 | 110,592 | v1 2,048 | 48500 | Settled logo has gaps (2,048 for 5,384 targets) | =ablate-particle-count.png= |
+| Particle trails | 32,768 | off | 45000 | Dots instead of motion streaks | =ablate-particle-trails.png= |
+
+Mesh density was 320×16 until this measurement pass. 320 versus 160 along
+the knot showed no difference at native scale, only a faint facet at 4×
+zoom, but cost ~25% of the scene's estimated device time, so it was lowered.
+Peak RAM is unchanged, since the terrain sets the peak.
+
+* Host frame time (µs; M2 Max, not RP2350)
+
+=eh_cli bench demo=: one untimed warmup loop, then one 54 s loop at 30 fps
+steps (1,620 frames). Each frame runs one frame plan (prepare, parts,
+LEDs) on a host thread pool. Scene-entry frames that build tables are
+excluded and reported separately. All runs end on the same framebuffer
+(FNV-1a =634857ad=), so the thread count does not change the output.
+
+| Scene | 1 thread p50 (run 1 / 2) | 2 threads p50 (run 1 / 2) | 2 threads p95 (run 1) | v1 p50 |
+|-------+--------------------------+---------------------------+-----------------------+--------|
+| torus + plasma | 890 / 882 | 494 / 601 | 772 | 313 |
+| tunnel | 353 / 351 | 199 / 266 | 295 | 53 |
+| terrain | 479 / 478 | 257 / 261 | 283 | 160 |
+| particles | 567 / 579 | 420 / 404 | 602 | 38 |
+
+Two threads speed up torus, tunnel and terrain by 1.77–1.86× (run 1).
+Particles gain only 1.35–1.43×. Likely causes, not profiled: every band's
+second pass walks all 8,192 segments, and drawing concentrates where the
+logo is. Native
+resolution costs 2.8–15× v1 per frame on the host. Plasma alone at 360²:
+p50 127.7 µs; as two sequential bands, the slowest band takes 64.4 µs. The
+FNV-1a hash is =28b3dd69= in both.
+
+Scene entry (1 thread, run 1): torus 1.19 ms, tunnel 0.64 ms, terrain 3.7 ms
+(256² map generation), particles 1.24 ms. On a device these are one-off
+stalls at scene cuts. Their device cost is not estimated.
+
+* RP2350 estimate (dual core, 150 MHz): which scenes miss 30 fps
+
+From =device-estimate.json=. Ranges are [pessimistic, optimistic] per-unit
+cycle costs (see the probe README for the method and assumptions).
+
+| Scene | fps p50 | fps p90 | fps worst | Frames over budget (of total) | Worst frame |
+|-------+---------+---------+-----------+-------------------------------+-------------|
+| torus + plasma | 31–48 | 18–27 | 12–18 | 49–118 of 420 | t = 13.3 s (dive) |
+| tunnel | 42–61 | 33–47 | 33–47 | 0 | t = 14.0 s (entry fade) |
+| terrain | 42–62 | 29–42 | 24–33 | 0–58 of 480 | t = 26.7 s (entry fade) |
+| particles | 38–65 | 30–51 | 26–42 | 0–22 of 360 | t = 42.1 s (5 px heads) |
+
+*Flagged: torus.* At optimistic costs, the over-budget frames are exactly
+the last 1.6 s of the dive (t 12.37–13.97 s). There the tube fills the
+screen, each core writes ~82k knot pixels over ~51k plasma pixels, and a
+full-frame white fade runs on top. That tail is fill-bound: the 96×8 mesh
+estimates 13–18 fps worst, the same as 160×16. At pessimistic costs, the
+fade-in second and mid-scene stretches where the knot is close also exceed
+the budget. Trade-offs, in order of preference:
+
+1. Measure first. The span inner loop is 47 Thumb-2 instructions per
+   written pixel; on-device cycle counts may land at either end of the
+   range.
+2. A fixed-point span loop (integer z/u/v steps, no =VCVT=) would roughly
+   halve the per-pixel cost. This is engineering work, not a quality loss.
+3. Start the white-out earlier, so the screen-filling frames are mostly
+   white (or skip the knot once the fade passes ~75%). This changes the
+   choreography.
+4. Accept ~1.6 s at 12–18 fps during a fast white-out dive.
+
+*Borderline: terrain and particles.* Their pessimistic worst frames are
+24–26 fps: the terrain's entry fade and the particles' largest-head
+frames. Per-part load is balanced by construction (columns, row bands),
+so the remaining lever is per-pixel cost, not the split.
+
+* Verification run with these measurements
+
+- Release, 53/53 ctest; ASan+UBSan (=EH_SANITIZE=ON=), 53/53; TSan
+  (=EH_TSAN=ON=, preview off), 47/47 (thread pool, two workers); trails off
+  (=-DEH_DEFINES=EH_PARTICLE_TRAILS=0=), 53/53.
+- =python3 tools/mutation_check.py=: 29/29 mutants caught. This includes the
+  rasteriser row-run bounds, strip culling, the pool barrier and the RAM
+  budget band.

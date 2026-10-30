@@ -1,0 +1,16 @@
+{
+  "kind": "static sizeof accounting (calculated, not measured RSS)",
+  "framebuffer_180x180_rgb565": 64800,
+  "demo_state_total": 140388,
+  "workspace_union": 107556,
+  "torus_ws": 107556,
+  "tunnel_ws": 104996,
+  "terrain_ws": 49152,
+  "particles_ws": 32772,
+  "const_tables": {"sin8": 256, "circle_spans": 360, "palettes": 2048, "led_samples": 162},
+  "plasma_prototype_ram": {"framebuffer": 64800, "per_call_stack_arrays": 540},
+  "core_ram_estimate": 205188,
+  "rp2350_sram": 532480,
+  "core_ram_fraction_of_sram": 0.385,
+  "host_present_canvas_not_on_device": 580800
+}

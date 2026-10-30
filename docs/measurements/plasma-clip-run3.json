@@ -1,0 +1,17 @@
+{
+  "benchmark": "plasma",
+  "scope": "host only; not an RP2350 or badge measurement",
+  "host_cpu": "Apple M2 Max",
+  "build": "AppleClang 17.0.0.17000603 | Release |  -O3 -DNDEBUG | arm64",
+  "clock": "CLOCK_MONOTONIC_RAW wall time, microseconds",
+  "clock_res_ns": 42,
+  "what": "eh_plasma_render only (no LED, no presentation); circle-clipped",
+  "warmup_frames": 120,
+  "frames": 1800,
+  "bands": 1,
+  "palette": 0,
+  "timeline": "t_ms = k*100/3 (30 fps steps)",
+  "frame_us": {"n": 1800, "min": 31.88, "p50": 32.67, "mean": 33.05, "p95": 34.75, "p99": 41.00, "max": 50.17},
+  "last_frame_fnv1a": "c38f5286",
+  "peak_rss_bytes": 1474560
+}

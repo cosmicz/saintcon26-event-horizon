@@ -1,0 +1,30 @@
+.DS_Store
+
+# Build output and generated preview frames
+/build/
+/build-*/
+/device/**/build/
+/out/
+
+# Local tooling and project worktrees
+.worktrees/
+.venv/
+__pycache__/
+*.elc
+*~
+.#*
+
+# Secrets never belong here
+.env
+.env.*
+*.token
+*.pem
+*.key
+_ext/
+
+# Task-tracker state from an enclosing workspace is never committed here.
+.embead/
+.dorg/
+
+# External reference clones are untrusted and never committed.
+reference/

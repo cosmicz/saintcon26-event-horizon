@@ -1,0 +1,20 @@
+{
+  "kind": "ESTIMATE from host work counts x Cortex-M33 per-unit cycle costs; not a device measurement",
+  "clock_mhz_assumed": 150,
+  "cycles_per_core_at_30fps": 5000000,
+  "workers": 2,
+  "scenes": {
+    "torus-plasma": {"frames": 420, "critical_path_mcycles_p50": [3.09, 4.78], "critical_path_mcycles_max": [8.47, 12.45], "ms_p50": [20.6, 31.9], "ms_max": [56.5, 83.0], "fps_p50": [31, 48], "fps_p90": [18, 27], "fps_worst": [12, 18], "frames_over_30fps_budget": [49, 118],
+      "mean_units_per_frame": {"plasma_px": 101780, "vertex": 2560, "strip_check": 1280, "face_check": 8638, "tri_setup": 3274, "tri_row": 20286, "edge_reject_px": 37046, "depth_fail_px": 6323, "written_px": 33762, "fade_px": 17933},
+      "worst_frame": {"t_ms": 13300, "units_by_worker": [{"plasma_px": 50890, "vertex": 1280, "strip_check": 640, "face_check": 5824, "tri_setup": 1284, "tri_row": 11814, "edge_reject_px": 22528, "depth_fail_px": 20214, "written_px": 82296, "fade_px": 50890}, {"plasma_px": 50890, "vertex": 1280, "strip_check": 640, "face_check": 5760, "tri_setup": 1279, "tri_row": 12333, "edge_reject_px": 23380, "depth_fail_px": 22312, "written_px": 82795, "fade_px": 50890}]}},
+    "tunnel": {"frames": 360, "critical_path_mcycles_p50": [2.44, 3.56], "critical_path_mcycles_max": [3.21, 4.58], "ms_p50": [16.3, 23.7], "ms_max": [21.4, 30.5], "fps_p50": [42, 61], "fps_p90": [33, 47], "fps_worst": [33, 47], "frames_over_30fps_budget": [0, 0],
+      "mean_units_per_frame": {"tunnel_px": 101780, "fade_px": 16681},
+      "worst_frame": {"t_ms": 14000, "units_by_worker": [{"tunnel_px": 50890, "fade_px": 50890}, {"tunnel_px": 50890, "fade_px": 50890}]}},
+    "terrain": {"frames": 480, "critical_path_mcycles_p50": [2.41, 3.55], "critical_path_mcycles_max": [4.51, 6.37], "ms_p50": [16.1, 23.7], "ms_max": [30.0, 42.5], "fps_p50": [42, 62], "fps_p90": [29, 42], "fps_worst": [24, 33], "frames_over_30fps_budget": [0, 58],
+      "mean_units_per_frame": {"fade_px": 6361, "terrain_sample": 66600, "terrain_fill_px": 53507, "sky_px": 48273},
+      "worst_frame": {"t_ms": 26733, "units_by_worker": [{"fade_px": 50890, "terrain_sample": 33300, "terrain_fill_px": 4183, "sky_px": 46707}, {"fade_px": 50890, "terrain_sample": 33300, "terrain_fill_px": 9345, "sky_px": 41545}]}},
+    "particles-logo": {"frames": 360, "critical_path_mcycles_p50": [2.30, 3.98], "critical_path_mcycles_max": [3.54, 5.88], "ms_p50": [15.4, 26.5], "ms_max": [23.6, 39.2], "fps_p50": [38, 65], "fps_p90": [30, 51], "fps_worst": [26, 42], "frames_over_30fps_budget": [0, 22],
+      "mean_units_per_frame": {"fade_px": 8199, "particle_locate": 16384, "seg_check": 65536, "streak_px": 12417, "head_px": 14531, "bg_px": 129600},
+      "worst_frame": {"t_ms": 42100, "units_by_worker": [{"particle_locate": 8192, "seg_check": 32768, "streak_px": 28766, "head_px": 100899, "bg_px": 64800}, {"particle_locate": 8192, "seg_check": 32768, "streak_px": 28950, "head_px": 101556, "bg_px": 64800}]}}
+  }
+}

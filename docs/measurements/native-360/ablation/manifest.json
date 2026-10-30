@@ -1,0 +1,147 @@
+{
+  "tool": "tools/ablate.py",
+  "scope": "host-rendered frames; memory is sizeof accounting from eh_cli memory",
+  "crop": {
+    "size": 110,
+    "zoom": 4,
+    "origin": "canvas px (LCD at +40,+40)"
+  },
+  "default": {
+    "core_ram": 455972,
+    "fraction": 0.8563
+  },
+  "ablations": [
+    {
+      "name": "torus-env",
+      "defines": "EH_ENV_SHIFT=6",
+      "scene": "torus-plasma",
+      "t_ms": 6000,
+      "scene_core_ram_default": 386616,
+      "scene_core_ram_ablated": 362040,
+      "block_bytes": 24576,
+      "core_ram_ablated": 455972,
+      "fb_fnv1a_default": "c4ce2460",
+      "fb_fnv1a_ablated": "4bcdafc0",
+      "frames_identical": false,
+      "look_for": "environment map 128x128 -> 64x64: blurrier, blockier reflections on the chrome tube",
+      "sheet": "ablate-torus-env.png"
+    },
+    {
+      "name": "torus-mesh",
+      "defines": "EH_TORUS_NU=96;EH_TORUS_NV=8",
+      "scene": "torus-plasma",
+      "t_ms": 6000,
+      "scene_core_ram_default": 386616,
+      "scene_core_ram_ablated": 367864,
+      "block_bytes": 18752,
+      "core_ram_ablated": 455972,
+      "fb_fnv1a_default": "c4ce2460",
+      "fb_fnv1a_ablated": "5d591e63",
+      "frames_identical": false,
+      "look_for": "mesh 160x16 -> v1 96x8: faceted tube outline and polygonal bends",
+      "sheet": "ablate-torus-mesh.png"
+    },
+    {
+      "name": "tunnel-tex",
+      "defines": "EH_TUNNEL_TEX_SHIFT=6",
+      "scene": "tunnel",
+      "t_ms": 20000,
+      "scene_core_ram_default": 388876,
+      "scene_core_ram_ablated": 364300,
+      "block_bytes": 24576,
+      "core_ram_ablated": 455972,
+      "fb_fnv1a_default": "06f59eeb",
+      "fb_fnv1a_ablated": "da4f9709",
+      "frames_identical": false,
+      "look_for": "wall texture 128x128 -> 64x64: coarser panels and stair-stepped seams",
+      "sheet": "ablate-tunnel-tex.png"
+    },
+    {
+      "name": "terrain-map",
+      "defines": "EH_TERRAIN_SHIFT=7",
+      "scene": "terrain",
+      "t_ms": 30500,
+      "scene_core_ram_default": 455972,
+      "scene_core_ram_ablated": 308516,
+      "block_bytes": 147456,
+      "core_ram_ablated": 439536,
+      "fb_fnv1a_default": "288a4e66",
+      "fb_fnv1a_ablated": "ba038960",
+      "frames_identical": false,
+      "look_for": "height/colour maps 256 -> 128: near slopes break into blocks twice as large; loses the finest noise octave and per-sample grain",
+      "sheet": "ablate-terrain-map.png"
+    },
+    {
+      "name": "particle-count",
+      "defines": "EH_PARTICLE_COUNT=2048",
+      "scene": "particles-logo",
+      "t_ms": 48500,
+      "scene_core_ram_default": 439536,
+      "scene_core_ram_ablated": 328944,
+      "block_bytes": 110592,
+      "core_ram_ablated": 455972,
+      "fb_fnv1a_default": "ccaf36a9",
+      "fb_fnv1a_ablated": "795b8d65",
+      "frames_identical": false,
+      "look_for": "8,192 -> v1 2,048 particles: the settled logo has gaps (2,048 particles for 5,384 targets)",
+      "sheet": "ablate-particle-count.png"
+    },
+    {
+      "name": "particle-trails",
+      "defines": "EH_PARTICLE_TRAILS=0",
+      "scene": "particles-logo",
+      "t_ms": 45000,
+      "scene_core_ram_default": 439536,
+      "scene_core_ram_ablated": 406768,
+      "block_bytes": 32768,
+      "core_ram_ablated": 455972,
+      "fb_fnv1a_default": "13d217fb",
+      "fb_fnv1a_ablated": "b6c7b49a",
+      "frames_identical": false,
+      "look_for": "trails off: rebuild flight shows dots instead of motion streaks",
+      "sheet": "ablate-particle-trails.png"
+    }
+  ],
+  "v1_vs_native": [
+    {
+      "name": "torus-plasma",
+      "t_ms": 6000,
+      "fb_fnv1a_v1": "fca042d3",
+      "fb_fnv1a_native": "c4ce2460",
+      "sheet": "v1-vs-native-torus-plasma.png"
+    },
+    {
+      "name": "tunnel",
+      "t_ms": 20000,
+      "fb_fnv1a_v1": "49c8c1eb",
+      "fb_fnv1a_native": "06f59eeb",
+      "sheet": "v1-vs-native-tunnel.png"
+    },
+    {
+      "name": "terrain",
+      "t_ms": 30500,
+      "fb_fnv1a_v1": "221f245c",
+      "fb_fnv1a_native": "288a4e66",
+      "sheet": "v1-vs-native-terrain.png"
+    },
+    {
+      "name": "particles-flight",
+      "t_ms": 45000,
+      "fb_fnv1a_v1": "59441b62",
+      "fb_fnv1a_native": "13d217fb",
+      "sheet": "v1-vs-native-particles-flight.png"
+    },
+    {
+      "name": "particles-logo",
+      "t_ms": 48500,
+      "fb_fnv1a_v1": "3a706b0e",
+      "fb_fnv1a_native": "ccaf36a9",
+      "sheet": "v1-vs-native-particles-logo.png"
+    }
+  ],
+  "v1": {
+    "ref": "5889e0d",
+    "core_ram": 205188,
+    "fraction": 0.385
+  }
+}

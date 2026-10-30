@@ -1,0 +1,103 @@
+#+title: EVENT HORIZON — host measurements
+#+date: [2026-10-29 Thu]
+
+* Scope
+
+/History ([2026-10-29 Thu]):/ these are the v1 (180×180) measurements at
+=66bc37e=/=5889e0d=, and the probes under =probes/= are written against v1's
+API. The native 360×360 build is measured in [[file:native-360/README.org][native-360/]].
+
+Host-only measurements of the renderer core. They are *not* RP2350 or badge
+measurements and make no claim about device frame rate.
+
+* Provenance
+
+- Code: commit =66bc37e= (=feature/host-preview=, review fixes R1/R2),
+  built from a clean clone with
+  =cmake -S . -B build -DCMAKE_BUILD_TYPE=Release= (AppleClang 17.0.0,
+  =-O3 -DNDEBUG=, arm64). =ctest=: 44/44 passed in that clone before measuring.
+  This supersedes the first recording at =1e341f2=. That run's medians agreed
+  within ~2%, but its plasma covered fewer cells.
+- Host: Apple M2 Max, macOS 15.8.1. Other agent sessions were running. Load
+  averages were 8.8 (1 min), 45 (5 min) and 32 (15 min) (=environment.txt=),
+  so the tails (p99, max) are noisy; the medians match the earlier
+  low-load run.
+- Clock: =CLOCK_MONOTONIC_RAW= (42 ns resolution). macOS =CLOCK_MONOTONIC=
+  ticks in 1 µs steps, which is too coarse for ~33 µs frames.
+
+* Method
+
+| File | Command | What is timed |
+|------+---------+---------------|
+| =plasma-clip-run{1,2,3}.json= | =eh_cli bench plasma= | =eh_plasma_render=, circle-clipped, 120 untimed warmup frames then 1800 timed frames at 30 fps timeline steps |
+| =plasma-noclip.json= | =eh_cli bench plasma --noclip= | Same, full 180×180 rectangle |
+| =plasma-bands2.json= | =eh_cli bench plasma --bands 2= | Two half-frame bands rendered sequentially; slowest band reported per frame |
+| =demo-run{1,2}.json= | =eh_cli bench demo= | One untimed warmup loop, then one 54 s loop (1620 frames): =eh_demo_frame= (scene render plus LED model) per scene; scene-entry frames (table builds) reported separately; the host presentation composite timed separately |
+| =memory.json= | =eh_cli memory= | =sizeof= accounting (calculated, not measured) |
+
+=peak_rss_bytes= is the process's =getrusage= maximum resident set. It
+includes the C runtime and dyld, so it is not the core's memory footprint;
+=memory.json= is the core accounting.
+
+=last_frame_fnv1a= hashes the final plasma framebuffer. The plasma is pure
+integer arithmetic, so a reviewer on any host should get =c38f5286=
+(clipped) and =eb152313= (unclipped) with the default frame count and warmup.
+
+* Results (µs)
+
+| Workload | p50 | mean | p95 | p99 | max |
+|----------+-----+------+-----+-----+-----|
+| Plasma clipped, run 1 | 32.71 | 32.97 | 34.08 | 37.21 | 63.21 |
+| Plasma clipped, run 2 | 32.71 | 33.05 | 34.50 | 40.79 | 51.54 |
+| Plasma clipped, run 3 | 32.67 | 33.05 | 34.75 | 41.00 | 50.17 |
+| Plasma full rectangle | 36.67 | 37.15 | 40.25 | 46.25 | 68.79 |
+| Plasma 2 bands, whole frame | 32.96 | 33.33 | 34.88 | 39.96 | 68.25 |
+| Plasma 2 bands, slowest band | 16.50 | — | — | — | — |
+
+| Demo scene (runs 1 / 2) | p50 | mean | p95 | max |
+|-------------------------+-----+------+-----+-----|
+| torus-plasma | 310.9 / 311.9 | 348.6 / 356.4 | 630.8 / 630.9 | 750.8 / 1053.3 |
+| tunnel | 53.3 / 54.3 | 63.5 / 68.4 | 99.1 / 105.8 | 105.2 / 310.7 |
+| terrain | 158.5 / 161.4 | 147.2 / 154.1 | 171.3 / 176.3 | 187.4 / 470.0 |
+| particles-logo | 37.8 / 38.4 | 40.3 / 40.2 | 50.0 / 50.3 | 240.0 / 69.3 |
+
+Scene-entry frames (run 1 / 2): torus 454 / 457, tunnel 308 / 317, terrain
+847 / 863, particles 219 / 226. LED model p50 0.12. Host presentation
+composite (440×440 RGB888, host only) p50 195 / 199. Peak RSS: plasma bench
+1.47–1.49 MB, demo bench 2.2 MB.
+
+* Reading the numbers
+
+- Clipping to the round display skips 20.9% of cells (25,624 of 32,400
+  written) but saves only ~11% of plasma time. Not every cost scales with pixel count; the split was not
+  profiled.
+- The two bands are balanced: the slowest band (16.5 µs) is about half a full
+  frame. That is the critical path a two-core split would have, ignoring
+  synchronization and memory contention.
+- The torus scene is ~9× the plasma alone. Its p95 comes from the dive
+  (the last 3 s): a probe ([[file:probes/torus_windows.c][source]], [[file:probes/torus_windows.txt][output]]) timing =eh_torus_render= in 2 s windows gave
+  328–361 µs means up to 12 s and 586 µs (max 802) for 12–14 s, as the
+  projected triangles grow. It is the scene to watch on a device.
+- Terrain's mean is below its p50 because the first ~2 s of the scene are
+  cheaper. A probe ([[file:probes/terrain_tunnel_windows.c][source]], [[file:probes/terrain_tunnel_windows.txt][output]]) timing =eh_terrain_render= in 2 s windows gave
+  85 µs for 0–2 s against 144–163 µs afterwards. The cause was not
+  investigated; the fade-in lasts only 1 s, so it does not explain it.
+- The tunnel's mean and p95 are pulled up by its last 3 s, where the per-pixel
+  end-glow branch runs. The same probe gave 52–58 µs per 2 s window before
+  8 s, 70 µs for 8–10 s (glow from 9 s) and 99 µs for 10–12 s.
+
+* Window probes
+
+Small standalone programs, linked against the core library, that time one
+scene's render over 2 s windows of scene-local time (30 fps steps, no warmup).
+Build after the main build:
+
+#+begin_src sh
+cc -O3 -Iinclude -o /tmp/torus_windows docs/measurements/probes/torus_windows.c build/libeh_core.a
+/tmp/torus_windows
+#+end_src
+
+The committed outputs come from the same clean-clone session as the main
+benchmarks, under the load recorded above. An earlier uncommitted
+run gave the same pattern, but individual windows differed by up to ~25%
+(tunnel 8–10 s: 88 µs vs 69 µs), so treat window means as indicative.

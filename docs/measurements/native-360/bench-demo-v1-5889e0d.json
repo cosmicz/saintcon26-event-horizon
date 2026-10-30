@@ -1,0 +1,20 @@
+{
+  "benchmark": "demo",
+  "scope": "host only; not an RP2350 or badge measurement",
+  "host_cpu": "Apple M2 Max",
+  "build": "AppleClang 17.0.0.17000603 | Release |  -O3 -DNDEBUG | arm64",
+  "clock": "CLOCK_MONOTONIC_RAW wall time, microseconds",
+  "clock_res_ns": 42,
+  "what": "one full 54000 ms loop at 30 fps steps after 1 untimed warmup loop(s); render_us = eh_demo_frame (scene render + LED model); scene-entry frames that build tables are reported separately",
+  "frames": 1620,
+  "render_us_by_scene": {
+    "torus-plasma": {"n": 419, "min": 274.29, "p50": 312.62, "mean": 350.41, "p95": 607.29, "p99": 698.96, "max": 724.96},
+    "tunnel": {"n": 359, "min": 50.00, "p50": 52.79, "mean": 64.10, "p95": 101.00, "p99": 112.46, "max": 138.25},
+    "terrain": {"n": 479, "min": 76.25, "p50": 159.50, "mean": 148.85, "p95": 173.79, "p99": 195.42, "max": 298.88},
+    "particles-logo": {"n": 359, "min": 33.83, "p50": 37.88, "mean": 40.12, "p95": 50.17, "p99": 53.29, "max": 96.62}
+  },
+  "scene_entry_frame_us": {"torus-plasma": 446.38, "tunnel": 298.58, "terrain": 860.54, "particles-logo": 215.46},
+  "led_model_us": {"n": 1620, "min": 0.08, "p50": 0.12, "mean": 0.13, "p95": 0.12, "p99": 0.21, "max": 3.67},
+  "host_present_composite_us": {"n": 1620, "min": 191.62, "p50": 195.33, "mean": 198.28, "p95": 212.83, "p99": 251.96, "max": 371.79},
+  "peak_rss_bytes": 2260992
+}
