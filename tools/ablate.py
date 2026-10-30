@@ -14,9 +14,11 @@ the project's own sources; no device is touched. Frames are deterministic,
 so the manifest records the framebuffer hash of every frame used.
 
     python3 tools/ablate.py --out docs/measurements/native-360/ablation
+    python3 tools/ablate.py --only torus-env --palette 2 --out out/spectrum
 """
 
 import argparse
+import hashlib
 import json
 import pathlib
 import subprocess
@@ -45,7 +47,7 @@ ABLATIONS = [
      "height/colour maps 256 -> 128: near slopes break into blocks twice as large; "
      "loses the finest noise octave and per-sample grain"),
     ("particle-count", "EH_PARTICLE_COUNT=2048", "particles-logo", 48500, (60, 175),
-     "8,192 -> v1 2,048 particles: the settled logo has gaps (2,048 particles for 5,384 targets)"),
+     "8,192 -> v1 2,048 particles: fewer particles leave gaps in the settled lettering"),
     ("particle-trails", "EH_PARTICLE_TRAILS=0", "particles-logo", 45000, (165, 165),
      "trails off: rebuild flight shows dots instead of motion streaks"),
 ]
@@ -76,10 +78,20 @@ def build(src, out, defines=""):
     return out / "eh_cli"
 
 
-def frame(cli, tmp, t):
-    d = pathlib.Path(tmp) / f"frames-{abs(hash((str(cli), t)))}"
-    line = run([str(cli), "frames", "--out", str(d), "--at", str(t)]).strip().splitlines()[-1]
+def palette_holds(palette):
+    """Use the existing A button, leaving yaw, pitch and wireframe untouched."""
+    if palette not in range(4):
+        raise ValueError("palette must be 0..3")
+    return [arg for i in range(palette) for arg in ("--hold", f"A:{66*i}-{66*i+33}")]
+
+
+def frame(cli, tmp, t, palette=0):
+    controls = palette_holds(palette)
+    d = pathlib.Path(tmp) / f"frames-{abs(hash((str(cli), t, palette)))}"
+    line = run([str(cli), "frames", "--out", str(d), "--at", str(t), *controls]).strip().splitlines()[-1]
     info = json.loads(line)
+    if info["palette"] != palette or info["yaw"] != 0 or info["pitch"] != 0:
+        raise ValueError("comparison controls disagree: palette or camera changed")
     return ppm_to_png.read_ppm(info["file"]), info["fb_fnv1a"]
 
 
@@ -96,11 +108,16 @@ def memory(cli):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", required=True)
-    ap.add_argument("--only", help="comma-separated ablation names (default: all, plus v1)")
+    ap.add_argument("--only", help="comma-separated ablation names, v1, or v1-SCENE (default: all)")
+    ap.add_argument("--palette", type=int, choices=range(4), default=0,
+                    help="same renderer palette on both sides: 0 horizon, 1 ice, 2 spectrum, 3 ember")
     args = ap.parse_args()
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     only = set(args.only.split(",")) if args.only else None
+    known = {row[0] for row in ABLATIONS} | {"v1"} | {f"v1-{row[0]}" for row in V1_FRAMES}
+    if only and not only <= known:
+        ap.error("unknown comparison: " + ", ".join(sorted(only - known)))
 
     with tempfile.TemporaryDirectory(prefix="eh-ablate-") as tmp:
         tmp = pathlib.Path(tmp)
@@ -108,6 +125,15 @@ def main():
         default_mem = memory(default_cli)
         manifest = {
             "tool": "tools/ablate.py",
+            "tool_sha256": hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest(),
+            "native_source_ref": run(["git", "-C", str(ROOT), "rev-parse", "HEAD"]).strip(),
+            "renderer_files_sha256": {
+                p: hashlib.sha256((ROOT / p).read_bytes()).hexdigest()
+                for p in run(["git", "-C", str(ROOT), "ls-files", "src", "include"]).splitlines()},
+            "palette": args.palette,
+            "palette_name": ("horizon", "ice", "spectrum", "ember")[args.palette],
+            "frame_arguments": palette_holds(args.palette),
+            "camera": {"yaw": 0, "pitch": 0},
             "scope": "host-rendered frames; memory is sizeof accounting from eh_cli memory",
             "crop": {"size": CROP, "zoom": ZOOM, "origin": "canvas px (LCD at +40,+40)"},
             "default": {"core_ram": default_mem["core_ram_union_peak"],
@@ -121,8 +147,8 @@ def main():
                 continue
             cli = build(ROOT, tmp / name, defines)
             mem = memory(cli)
-            a, ha = frame(default_cli, tmp, t)
-            b, hb = frame(cli, tmp, t)
+            a, ha = frame(default_cli, tmp, t, args.palette)
+            b, hb = frame(cli, tmp, t, args.palette)
             png = out / f"ablate-{name}.png"
             write_sheet(png, a, b, origin)
             d_scene = default_mem["per_scene_core_ram"][scene]["bytes"]
@@ -134,10 +160,11 @@ def main():
                 "core_ram_ablated": mem["core_ram_union_peak"],
                 "fb_fnv1a_default": ha, "fb_fnv1a_ablated": hb,
                 "frames_identical": ha == hb, "look_for": look, "sheet": png.name,
+                "sheet_sha256": hashlib.sha256(png.read_bytes()).hexdigest(),
             })
             print(f"{name:16s} {d_scene - a_scene:7d} B  {png}")
 
-        if not only or "v1" in only:
+        if not only or "v1" in only or any(n.startswith("v1-") for n in only):
             v1_src = tmp / "v1-src"
             v1_src.mkdir()
             blob = subprocess.run(["git", "-C", str(ROOT), "archive", V1_REF], capture_output=True, check=True).stdout
@@ -148,12 +175,15 @@ def main():
             manifest["v1"] = {"ref": V1_REF, "core_ram": v1_mem["core_ram_estimate"],
                               "fraction": v1_mem["core_ram_fraction_of_sram"]}
             for name, t, origin in V1_FRAMES:
-                a, ha = frame(v1_cli, tmp, t)
-                b, hb = frame(default_cli, tmp, t)
+                if only and "v1" not in only and f"v1-{name}" not in only:
+                    continue
+                a, ha = frame(v1_cli, tmp, t, args.palette)
+                b, hb = frame(default_cli, tmp, t, args.palette)
                 png = out / f"v1-vs-native-{name}.png"
                 write_sheet(png, a, b, origin)
                 manifest["v1_vs_native"].append({"name": name, "t_ms": t, "fb_fnv1a_v1": ha,
-                                                 "fb_fnv1a_native": hb, "sheet": png.name})
+                                                 "fb_fnv1a_native": hb, "sheet": png.name,
+                                                 "sheet_sha256": hashlib.sha256(png.read_bytes()).hexdigest()})
                 print(f"v1 vs native {name:16s} {png}")
 
         (out / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")

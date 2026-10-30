@@ -81,6 +81,10 @@ add_executable(eh_cli src/host/eh_cli.c)
 target_link_libraries(eh_cli PRIVATE eh_host)
 target_compile_definitions(eh_cli PRIVATE "EH_BUILD_INFO=\"${EH_BUILD_INFO}\"")
 
+# Host render of the boot menu countdown (device/menu drawing and rules).
+add_executable(eh_menu_frames src/host/eh_menu_frames.c)
+target_link_libraries(eh_menu_frames PRIVATE eh_boot_select)
+
 if(EH_PREVIEW)
   find_package(SDL2 CONFIG)
   if(SDL2_FOUND)
@@ -123,6 +127,8 @@ endforeach()
 # plus the source pin audit of the real device sources.
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_FOUND)
+  add_test(NAME ablate_palette_tests
+    COMMAND Python3::Interpreter -I -B ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_ablate.py $<TARGET_FILE:eh_cli>)
   add_test(NAME dualboot_pack_tests
     COMMAND Python3::Interpreter -I ${CMAKE_CURRENT_SOURCE_DIR}/device/tools/test_dualboot_pack.py)
   add_test(NAME extract_panel_init_tests
@@ -136,6 +142,8 @@ if(Python3_FOUND)
     add_test(NAME release_export_tests
       COMMAND Python3::Interpreter -I -B ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_release_export.py)
   endif()
+  add_test(NAME menu_frames_tests
+    COMMAND Python3::Interpreter -I -B ${CMAKE_CURRENT_SOURCE_DIR}/tools/test_menu_frames.py $<TARGET_FILE:eh_menu_frames>)
   add_test(NAME pin_audit_sources
     COMMAND Python3::Interpreter -I ${CMAKE_CURRENT_SOURCE_DIR}/device/tools/pin_audit.py)
 endif()
