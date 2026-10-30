@@ -5,7 +5,7 @@
  * cloud about the display centre.
  *
  * Motion streaks come from the same analytic path: each particle draws a
- * fading segment from where it was EH_TRAIL_MS ago to where it is now, so
+ * fading segment from where it was TRAIL_S ago to where it is now, so
  * trails cost no history buffer and stay seekable. */
 #include <math.h>
 

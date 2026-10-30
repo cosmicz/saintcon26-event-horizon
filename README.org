@@ -28,9 +28,11 @@ Wayfarer v0.1 it was developed on (SHA-256 of flash =0x0–0x177000=:
 shipped that way is unknown; a mismatch stops the build instead of producing
 an image.
 
-*At your own risk.* The dual-boot image has run on one badge. Writing flash
-can brick a device, so keep the backup safe; restoring it is documented but
-has not been run on a badge.
+*At your own risk.* Earlier revisions of the dual-boot image have run on one
+badge; this revision's three-second countdown is tested on the host only
+(details in [[file:device/dualboot/README.org][device/dualboot/README.org]]). Writing flash can brick a device,
+so keep the backup safe; restoring it is documented but has not been run on
+a badge.
 
 *The EEPROM.* The badge keeps its saved state in an I2C EEPROM, which a
 flash backup does not include: if it is lost, the backup will not bring it

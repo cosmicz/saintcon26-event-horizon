@@ -63,24 +63,34 @@ packer rejects a backup that has any non-=0xFF= byte beyond it.
    runs unmodified. If the demo partition holds no bootable image,
    =chain_image= returns and the menu chains stock instead.
 
-*Residual risk (on-screen menu, not on hardware yet):* stock must bring its
-panel up from the handed-back state: panel asleep and reset, pins on their
-NULL function with pull-downs, PIO/DMA/PWM held in reset. The basis is
-static: an SDK image's =runtime_init= resets the IO and pad banks and those
-blocks itself, and the panel has had a hardware reset. Failure would show as a dark or corrupt display in
-stock, not an EEPROM write. Checking it needs another flash.
+*What hardware has shown* (one badge):
 
-*Verified on hardware 2026-10-29/30* on one badge: stock and the demo both
-boot through =chain_image=, with both the earlier headless menu and the
-on-screen menu. Background: whether =chain_image= on a
-partition region sets up ATRANS exactly as a partition boot does. The datasheet documents this
-pattern for custom bootloaders but does not spell out the ATRANS step for
-=chain_image=. A review (2026-10-29) traced Raspberry Pi's
-official A4 bootrom source at =c6cdb171=: =chain_image= → checked flash
-window → flash launch, which sets ATRANS. That is static support from
-source, not a hardware test. Stock's own runtime start-up resets the peripherals the menu
-touched (SDK =runtime_init_early_resets=: everything except QSPI, PLLs, USB
-and syscfg).
+- 2026-10-29, earlier headless menu: the image was written and verified.
+  Stock booted through =chain_image= and answered on its USB console.
+  Holding RIGHT at power-on started the demo, which rendered on the panel.
+- 2026-10-30, the on-screen menu (one-second countdown): written and
+  verified. The operator saw the menu on the panel and reported that the
+  badge booted through it. Stock re-enumerated on USB and answered an
+  identity query.
+- Not separately observed: stock's own display after the menu's screen
+  hand-back, the demo started from the on-screen menu, and the RIGHT-held
+  fast path on this image.
+- The three-second countdown is a later revision, tested on the host only.
+
+*Residual risk (screen hand-back):* stock must bring its panel up from the
+handed-back state: panel asleep and reset, pins on their NULL function with
+pull-downs, PIO/DMA/PWM held in reset. The basis is static: an SDK image's
+=runtime_init= resets the IO and pad banks and those blocks itself (SDK
+=runtime_init_early_resets=: everything except QSPI, PLLs, USB and syscfg),
+and the panel has had a hardware reset. A failure would show as a dark or
+corrupt display in stock, not an EEPROM write.
+
+*ATRANS under =chain_image=.* The datasheet documents this pattern for
+custom bootloaders but does not spell out the ATRANS step for
+=chain_image=. A review (2026-10-29) traced Raspberry Pi's official A4
+bootrom source at =c6cdb171=: =chain_image= → checked flash window → flash
+launch, which sets ATRANS. Stock running from its relocated copy on the
+badge is consistent with that.
 
 * Safety invariants and how they are checked
 
@@ -137,8 +147,7 @@ table comes from it, so keep =OUT_DIR= private and outside Git.
 * Flashing
 
 With the badge on USB (=-f= reboots it into BOOTSEL), write the whole packed
-image from offset 0. This is the command that installed the image verified
-on hardware:
+image from offset 0. This is the command used for the 2026-10-30 flash:
 
 #+begin_src sh
 picotool load -v -x dualboot.bin -t bin -o 0x10000000 -f
