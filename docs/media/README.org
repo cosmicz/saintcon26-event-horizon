@@ -1,0 +1,35 @@
+#+title: README media
+
+* Source
+
+These pictures come from the already-published badge recording at
+[[https://craftedkin.net/saintcon26-event-horizon/][craftedkin.net]]. They are actual hardware footage, not host renders.
+The recording is cropped to the badge and has no audio. No firmware,
+panel-init data or console output is included.
+
+- =badge-poster.jpg=: the published poster, unchanged, at 9 s of the clip.
+- =onbadge-scenes.png=: a 2×2 contact sheet of the published 480×480 scene
+  photographs: chrome knot at 9 s, tunnel at 18 s, terrain at 31 s and
+  particles at 46 s. FFmpeg decodes and tiles them without scaling or
+  colour adjustments, then writes a lossless RGB PNG. No pixels are retouched.
+
+[[file:manifest.json][manifest.json]] records the public source URLs, source hashes and final
+asset hashes. The video stays on the published site; the README links to
+it rather than copying the 8 MB recording into the source repository.
+
+* Reproduce
+
+Download the four scene photographs named in the manifest, then reproduce
+the contact sheet with FFmpeg:
+
+#+begin_src sh
+ffmpeg -i onbadge-torus.jpg -i onbadge-tunnel.jpg -i onbadge-terrain.jpg -i onbadge-particles.jpg \
+  -filter_complex '[0:v][1:v][2:v][3:v]xstack=inputs=4:layout=0_0|w0_0|0_h0|w0_h0,format=rgb24' \
+  -frames:v 1 onbadge-scenes.png
+#+end_src
+
+* Rendering
+
+The root README uses =begin_html= blocks because GitHub's Org renderer
+supports them, while it ignores =ATTR_HTML= and modern =begin_export html=
+blocks. This keeps the image dimensions and descriptive alt text intact.

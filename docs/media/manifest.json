@@ -1,0 +1,43 @@
+{
+  "description": "README photographs from the published badge recording; no host renders.",
+  "sources": [
+    {
+      "url": "https://craftedkin.net/saintcon26-event-horizon/media/badge-poster.jpg",
+      "sha256": "b7c6b1cb12dddd0d0c44bc5832b313693f6e136bde1dd84bfc60c5ff00278c1c",
+      "clip_time_s": 9
+    },
+    {
+      "url": "https://craftedkin.net/saintcon26-event-horizon/media/onbadge-torus.jpg",
+      "sha256": "80403f8da482bdffcc81a85cb5a041dcb3e94285a0136141ee39dd0747a0486a",
+      "clip_time_s": 9
+    },
+    {
+      "url": "https://craftedkin.net/saintcon26-event-horizon/media/onbadge-tunnel.jpg",
+      "sha256": "cb2bd9d4b756a091fbe8badca53b816a7e07ac3a3734c67bed5618255e6f98b4",
+      "clip_time_s": 18
+    },
+    {
+      "url": "https://craftedkin.net/saintcon26-event-horizon/media/onbadge-terrain.jpg",
+      "sha256": "79bf30373c5810d6b87f377bf0fb2f84c8a09ea1f55296669526498c947536ac",
+      "clip_time_s": 31
+    },
+    {
+      "url": "https://craftedkin.net/saintcon26-event-horizon/media/onbadge-particles.jpg",
+      "sha256": "afad13727d1017eb3a464a47a85bffa200518fbb4df802f0ace50f05d3091180",
+      "clip_time_s": 46
+    }
+  ],
+  "assets": [
+    {
+      "path": "badge-poster.jpg",
+      "sha256": "b7c6b1cb12dddd0d0c44bc5832b313693f6e136bde1dd84bfc60c5ff00278c1c",
+      "kind": "badge recording frame"
+    },
+    {
+      "path": "onbadge-scenes.png",
+      "sha256": "346530548cc01428d3818de704d02ab086655d289e03720ff3b6d62b0a4762fb",
+      "kind": "contact sheet of badge recording frames"
+    }
+  ],
+  "generator": "FFmpeg 8.1.2: decode four JPEGs, xstack 2x2, format rgb24, lossless PNG; command in README.org"
+}

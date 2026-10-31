@@ -1,5 +1,6 @@
-#+title: EVENT HORIZON — a SAINTCON 2026 badge demo
 #+startup: overview
+
+* EVENT HORIZON
 
 A 54-second demoscene production for the SAINTCON 2026 badge's 360×360 round
 panel (RP2350): a chrome torus knot over plasma, a twisting tunnel, a terrain
@@ -7,9 +8,17 @@ flythrough and a particle rebuild into an end title, rendered natively on
 both Cortex-M33 cores. It installs beside the badge's stock Wayfarer firmware
 behind a boot menu, so the badge keeps working as a badge.
 
-Write-up with footage: [[https://craftedkin.net/saintcon26-event-horizon/][craftedkin.net/saintcon26-event-horizon]].
+#+begin_html
+<a href="https://craftedkin.net/saintcon26-event-horizon/" title="Watch EVENT HORIZON on the badge">
+  <img src="docs/media/badge-poster.jpg" width="280" alt="The physical SAINTCON badge running the chrome knot over plasma. Click to watch the demo.">
+</a>
+#+end_html
 
-* Before you build for a badge
+*[[https://craftedkin.net/saintcon26-event-horizon/media/badge-demo.mp4][Watch it on the badge]]* · [[https://craftedkin.net/saintcon26-event-horizon/][The writeup: effects, memory and two cores]]
+
+The preview is a frame from the badge recording; the full video is silent.
+
+** Before you build for a badge
 
 *You need your own stock backup.* This repository contains no firmware
 image and none of the panel's register values. Those values belong to the
@@ -45,7 +54,7 @@ saved state, so the boot menu never hands over to stock while a key is down.
 Build, layout, safety argument and flashing:
 [[file:device/dualboot/README.org][device/dualboot/README.org]]. Toolchain: [[file:device/README.org][device/README.org]].
 
-* On the badge
+** On the badge
 
 | At power-on | Result |
 |-------------+--------|
@@ -56,7 +65,7 @@ In the menu, LEFT and RIGHT choose and restart the countdown; pressing the
 stick confirms. In the demo, the D-pad steers the camera, centre resets it,
 A cycles the palette and B toggles a wireframe torus.
 
-* The renderer
+** The renderer
 
 | Scene | Time | Technique |
 |-------+------+-----------|
@@ -67,11 +76,20 @@ A cycles the palette and B toggles a wireframe torus.
 
 The portable core (=src/core=) renders RGB565 at the panel's native
 resolution with a two-core frame plan (8 parts, 1–2 passes). Its RAM peak is
-85.6% of the RP2350's SRAM; every block has a before/after sheet in
-[[file:docs/measurements/native-360/README.org][docs/measurements/native-360]]. The same core drives a desktop preview and
+85.6% of the RP2350's SRAM. The same core drives a desktop preview and
 the device build.
 
-* Desktop preview and tests
+#+begin_html
+<img src="docs/media/onbadge-scenes.png" width="640" alt="Four frames photographed on the badge: chrome knot and tunnel across the top, terrain and particle trails below.">
+#+end_html
+
+*On the badge:* chrome knot and tunnel above; terrain and particles below.
+These are frames from the recording, not host renders.
+
+See [[file:docs/measurements/comparisons-20261030/README.org][the comparison renders and two-core diagram]] for what the extra memory
+buys, or [[file:docs/measurements/native-360/README.org][the measurements]] for RAM accounting and host timings.
+
+** Desktop preview and tests
 
 Requirements: CMake ≥ 3.20, a C11 compiler, Python 3. SDL2 is optional and
 only needed for the interactive window. Developed on macOS 15 (Apple M2 Max,
@@ -118,7 +136,7 @@ Headless:
 a held button (=UP DOWN LEFT RIGHT CENTER A B=). Each PPM is the full 440×440
 presentation: panel plus LED ring.
 
-* Credits
+** Credits
 
 - *Professor Plum* made the SAINTCON 2026 badge.
 - *redactd*'s [[https://github.com/im-redactd/saintcon26-gif-player][saintcon26-gif-player]] (MIT) documented the hardware; the LCD
@@ -131,7 +149,7 @@ presentation: panel plus LED ring.
 Third-party notices: [[file:device/demo/THIRD_PARTY_NOTICES.org][device/demo/THIRD_PARTY_NOTICES.org]]. The end title is
 drawn in a built-in block font, not the official SAINTCON artwork.
 
-* License
+** License
 
 MIT; see [[file:LICENSE][LICENSE]]. Third-party files keep their own licences, listed in
 the notices above.
