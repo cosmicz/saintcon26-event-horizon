@@ -16,8 +16,6 @@ behind a boot menu, so the badge keeps working as a badge.
 
 *[[https://craftedkin.net/saintcon26-event-horizon/media/badge-demo.mp4][Watch it on the badge]]* · [[https://craftedkin.net/saintcon26-event-horizon/][The writeup: effects, memory and two cores]]
 
-The preview is a frame from the badge recording; the full video is silent.
-
 ** Before you build for a badge
 
 *You need your own stock backup.* This repository contains no firmware
