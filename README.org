@@ -16,7 +16,7 @@ behind a boot menu, so the badge keeps working as a badge.
 
 *[[https://craftedkin.net/saintcon26-event-horizon/media/badge-demo.mp4][Watch it on the badge]]* · [[https://craftedkin.net/saintcon26-event-horizon/][The writeup: effects, memory and two cores]]
 
-** Before you build for a badge
+** Install on your badge
 
 *You need your own stock backup.* This repository contains no firmware
 image and none of the panel's register values. Those values belong to the
@@ -24,10 +24,6 @@ badge's stock firmware, so the build extracts them from a full flash backup
 of your own badge (=device/tools/extract_panel_init.py=, static analysis
 only; nothing is executed). Without the backup, the device images are not
 built.
-
-#+begin_src sh
-picotool save -a -v -f STOCK_DUMP.bin   # whole 16 MiB flash; keep it private
-#+end_src
 
 The build accepts only a backup whose firmware is byte-identical to the
 Wayfarer v0.1 it was developed on (SHA-256 of flash =0x0–0x177000=:
@@ -49,8 +45,130 @@ for I2C and EEPROM access (=device/dualboot/check.sh=). Stock, however,
 reads buttons held during its start-up, and one combination resets that
 saved state, so the boot menu never hands over to stock while a key is down.
 
-Build, layout, safety argument and flashing:
-[[file:device/dualboot/README.org][device/dualboot/README.org]]. Toolchain: [[file:device/README.org][device/README.org]].
+The walkthrough below uses the same backup, build and flash commands used
+for development. Run it from a POSIX shell, in order, and stop if any command
+fails. The tested host is Apple Silicon macOS; other hosts are not verified.
+Connect only the badge you intend to install on, using a USB data cable.
+
+*** 1. Get the source and build tools
+
+#+begin_src sh
+git clone https://github.com/cosmicz/saintcon26-event-horizon.git
+cd saintcon26-event-horizon
+#+end_src
+
+You need Git, Python 3, CMake, Ninja, picotool with USB support, the Pico SDK
+and an =arm-none-eabi= GCC toolchain *including newlib*. The recorded device
+build uses Pico SDK 2.3.1, picotool 2.3.1 and Arm GNU Toolchain 15.3.Rel2.
+On macOS, Homebrew provides the host tools:
+
+#+begin_src sh
+brew install cmake ninja picotool
+#+end_src
+
+Download the =arm-none-eabi= archive for your host from
+[[https://developer.arm.com/Tools%20and%20Software/GNU%20Toolchain][Arm GNU Toolchain]], check its published checksum, and extract it under
+=~/.local/share/rp2350/=. Set
+=PICO_TOOLCHAIN_PATH= to the extracted directory containing =bin/=; for the
+tested Apple Silicon archive, =device/env.sh= defaults to
+=~/.local/share/rp2350/arm-gnu-toolchain-15.3.rel2-darwin-arm64-arm-none-eabi=.
+Install the SDK at the matching default location:
+
+#+begin_src sh
+mkdir -p "$HOME/.local/share/rp2350"
+git clone --depth 1 --branch 2.3.1 https://github.com/raspberrypi/pico-sdk.git \
+  "$HOME/.local/share/rp2350/pico-sdk-2.3.1"
+. device/env.sh
+"$PICO_TOOLCHAIN_PATH/bin/arm-none-eabi-gcc" --version
+picotool version
+#+end_src
+
+If these tools are already installed elsewhere, export =PICO_SDK_PATH=,
+=PICO_TOOLCHAIN_PATH= and =picotool_DIR= *before* sourcing =device/env.sh=.
+=picotool_DIR= is the directory containing =picotoolConfig.cmake=.
+[[file:device/README.org][The toolchain notes]] describe the tested setup. SDK submodules are not
+needed for this build.
+
+*** 2. Back up your badge
+
+This walkthrough starts with an unmodified badge running the original
+Wayfarer firmware. A new dump of an already modified badge is not a stock
+backup and will be refused by the build; keep the original backup for any
+later update or rollback.
+The =-f= option asks compatible running firmware to reboot into BOOTSEL;
+if picotool cannot reach the badge, stop and follow the badge maker's
+BOOTSEL instructions rather than proceeding without a backup.
+
+Create a fresh directory outside the checkout so a later run cannot replace
+your original backup. Keep this shell open: the remaining commands use the
+same =badge_install_dir= variable.
+
+#+begin_src sh
+umask 077
+badge_install_dir=$(mktemp -d "$HOME/event-horizon-install.XXXXXX")
+picotool save -a -v -f "$badge_install_dir/stock-fullflash.bin" -t bin && \
+  test "$(wc -c < "$badge_install_dir/stock-fullflash.bin")" -eq 16777216 && \
+  shasum -a 256 "$badge_install_dir/stock-fullflash.bin" > "$badge_install_dir/stock-fullflash.sha256" && \
+  chmod 400 "$badge_install_dir/stock-fullflash.bin"
+#+end_src
+
+The backup must be exactly *16,777,216 bytes*, and picotool's save verification
+must pass. Make another safe copy of the backup and its checksum file before
+continuing. Keep both, and the generated image below, out of Git and public
+uploads: they contain stock firmware. This flash backup does not include
+the EEPROM described above.
+
+*** 3. Build, audit and pack
+
+This step runs on the computer; it does not access the badge.
+
+#+begin_src sh
+sh device/dualboot/check.sh "$badge_install_dir/stock-fullflash.bin" "$badge_install_dir/image"
+#+end_src
+
+The script extracts the panel initialization from your backup, builds the
+menu and demo, runs the EEPROM/flash and source-pin audits, checks that its
+negative witnesses fail as expected, and packs the image with your relocated
+stock firmware. It must finish successfully. A stock-version mismatch or
+failed audit is a stop, not a check to bypass.
+
+The result is =$badge_install_dir/image/dualboot.bin=, with slot files and a
+=manifest.json= recording their hashes. Keep the entire output directory.
+
+*** 4. Install and boot
+
+*The next command writes the badge's flash.* Start with Wayfarer running;
+if the demo is running, power-cycle and let the menu boot Wayfarer. Recheck
+your original backup, then install the packed binary at the explicit address:
+
+#+begin_src sh
+shasum -a 256 -c "$badge_install_dir/stock-fullflash.sha256" && \
+  picotool load -v -x "$badge_install_dir/image/dualboot.bin" -t bin -o 0x10000000 -f
+#+end_src
+
+Wait for write verification to pass and the badge to reboot. Its three-second
+menu defaults to Wayfarer; press RIGHT to choose EVENT HORIZON and press the
+stick to start it. Holding RIGHT during power-on starts the demo directly.
+To get back to the badge, power-cycle and let Wayfarer boot. Do not install
+by dragging a UF2 onto the USB drive; the partition layout matters.
+
+*** Restore the original firmware
+
+Keep the full backup for rollback. From Wayfarer (or the badge's BOOTSEL
+mode), writing it back at the same address removes the dual-boot layout:
+
+#+begin_src sh
+shasum -a 256 -c "$badge_install_dir/stock-fullflash.sha256" && \
+  picotool load -v -x "$badge_install_dir/stock-fullflash.bin" -t bin -o 0x10000000 -f
+#+end_src
+
+*Restoring the backup has not been exercised on hardware.* It restores flash,
+not EEPROM state. If you reopen your shell, first set =badge_install_dir= to
+the original backup directory; do not create a new backup of the modified
+badge and mistake it for the original.
+
+Layout, safety argument and hardware observations:
+[[file:device/dualboot/README.org][device/dualboot/README.org]].
 
 ** On the badge
 
